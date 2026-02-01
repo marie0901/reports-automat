@@ -55,6 +55,22 @@ WEEK_MAPPINGS = {
     'target': {'01': 'BF', '02': 'BE', '03': 'BD', '04': 'BC', '05': 'BB', '06': 'BA'}
 }
 
+SHEET_MAPPINGS = {
+    'casino-ret': 'WP Chains Sport'
+}
+
+TEMPLATE_MAPPINGS = {
+    "10min": "10 min",
+    "1h": "1h",
+    "1d": "1d",
+    "3d": "3d",
+    "4d": "4d",
+    "6d": "6d",
+    "8d": "8d",
+    "10d": "10d",
+    "12d": "12d"
+}
+
 
 @register_plugin
 class CasinoRetPlugin(BaseReportPlugin):
@@ -82,11 +98,19 @@ class CasinoRetPlugin(BaseReportPlugin):
         report_data = {}
         
         for file_name, data in data_files.items():
-            # Choose mapping
-            if "casinosport" in file_name.lower():
-                mappings = CASINOSPORT_MAPPINGS
+            # Determine mapping based on campaign name
+            if not data.empty and 'campaign_name' in data.columns:
+                campaign_name = data['campaign_name'].iloc[0]
+                if 'casino+sport' in campaign_name.lower() or 'a/b' in campaign_name.lower():
+                    mappings = CASINOSPORT_MAPPINGS
+                else:
+                    mappings = RETENTION_MAPPINGS
             else:
-                mappings = RETENTION_MAPPINGS
+                # Fallback to filename detection
+                if "casinosport" in file_name.lower() or "ab" in file_name.lower():
+                    mappings = CASINOSPORT_MAPPINGS
+                else:
+                    mappings = RETENTION_MAPPINGS
             
             # Filter templates
             filtered = data[data['template_name'].isin(mappings.keys())]
@@ -156,7 +180,21 @@ class CasinoRetPlugin(BaseReportPlugin):
         
         # Populate sections
         for file_name, section_data in report_data.items():
-            if "casinosport" in file_name.lower():
+            # Detect section by checking first campaign in data
+            if section_data:
+                # Get first timing category to check campaign type
+                first_timing = next(iter(section_data.values()), {})
+                if first_timing:
+                    first_week = next(iter(first_timing.values()), pd.DataFrame())
+                    if not first_week.empty and 'template_name' in first_week.columns:
+                        template = first_week['template_name'].iloc[0]
+                        # Check if it's a casino template
+                        if any(casino_key in str(template) for casino_key in ['[S]', 'sport', 'casino', 'FS']):
+                            self._populate_section(ws, section_data, 3, "casino+sport A/B Reg_No_Dep", "casino")
+                            continue
+            
+            # Fallback to filename detection
+            if "casinosport" in file_name.lower() or "ab" in file_name.lower():
                 self._populate_section(ws, section_data, 3, "casino+sport A/B Reg_No_Dep", "casino")
             elif "ret" in file_name.lower() and "1" in file_name:
                 self._populate_section(ws, section_data, 75, "Ret 1 dep [SPORT] ⚽️", "retention")
@@ -216,7 +254,14 @@ class CasinoRetPlugin(BaseReportPlugin):
         existing_wb = load_workbook(existing_path, data_only=False)
         
         generated_ws = generated_wb.active
-        existing_ws = existing_wb.active
+        
+        # Get target sheet based on report type
+        sheet_name = SHEET_MAPPINGS.get(self.name, existing_wb.sheetnames[0])
+        if sheet_name in existing_wb.sheetnames:
+            existing_ws = existing_wb[sheet_name]
+        else:
+            existing_ws = existing_wb.active
+            logger.warning(f"Sheet '{sheet_name}' not found, using active sheet")
         
         # Copy formatting
         self._copy_formatting(existing_ws, 'BE', target_col)
@@ -270,8 +315,7 @@ class CasinoRetPlugin(BaseReportPlugin):
     
     def _find_target_row(self, ws, campaign: str, template: str, metric: str) -> int:
         """Find target row in existing Excel."""
-        template_map = {"10min": "10 min", "1h": "1h", "1d": "1d", "3d": "3d", "4d": "4d", "6d": "6d", "8d": "8d", "10d": "10d", "12d": "12d"}
-        target_template = template_map.get(template, template)
+        target_template = TEMPLATE_MAPPINGS.get(template, template)
         
         # First find the campaign section
         campaign_start = None
