@@ -13,9 +13,14 @@ logger = logging.getLogger(__name__)
 TEMPLATE_MAPPING = {
     "[S] 10 min sport basic wp": "10m",
     "[S] 1h sport basic wp": "1h",
-    "[S] 2d sport basic wp": "1d",
-    "[S] 4d sport basic wp": "3d",
-    "[S] 8d sport basic wp": "7d"
+    "[S] 1d 2 BLOCKS (basic wp + highroller)": "1d",
+    "[S] 3d casino 1st dep total wp": "3d",
+    "[S] 5d casino 1st dep": "5d",
+    "[S] 7d 2 BLOCKS SPORT + CAS": "7d",
+    "[S] 10d A: freebet + 100fs": "9d",
+    "[S] 10d b: 150%sport + 100fs": "9d",
+    "[S] 12d A: freebet + 100fs": "12d",
+    "[S] 12d b: 150%sport + 100fs": "12d",
 }
 
 WEEKLY_BOUNDARIES = [
@@ -26,7 +31,7 @@ WEEKLY_BOUNDARIES = [
     ("2026-01-26", "2026-02-01"),  # Week 5
 ]
 
-TIME_PERIODS = ["10m", "1h", "1d", "3d", "7d"]
+TIME_PERIODS = ["10m", "1h", "1d", "3d", "5d", "7d", "9d", "12d"]
 METRICS = ["sent", "delivered", "opened", "clicked", "converted", "unsubscribed"]
 
 
@@ -103,7 +108,7 @@ class ABReportPlugin(BaseReportPlugin):
         ws['L2'] = "280% up to 375 EUR"
         
         # Week headers
-        week_labels = ["week 1 15.12", "week 2 22.12", "week 3 29.12", "week 4 05.01", "week 5 12.01"]
+        week_labels = ["week 1 29.12", "week 2 05.01", "week 3 12.01", "week 4 19.01", "week 5 26.01"]
         week_cols = ['I', 'L', 'O', 'R', 'U']
         for col, label in zip(week_cols, week_labels):
             ws[f'{col}3'] = label
