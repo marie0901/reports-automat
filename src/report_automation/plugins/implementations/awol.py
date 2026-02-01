@@ -31,6 +31,10 @@ WEEK_MAPPINGS = {
     'target': {'01': 'BF', '02': 'BE', '03': 'BD', '04': 'BC', '05': 'BB', '06': 'BA'}
 }
 
+SHEET_MAPPINGS = {
+    'awol': 'AWOL Chains Sport'
+}
+
 
 @register_plugin
 class AWOLPlugin(BaseReportPlugin):
@@ -110,7 +114,9 @@ class AWOLPlugin(BaseReportPlugin):
                 week_display, date = week_headers[week_key]
                 ws[f'{col_letter}1'] = f"Week {week_display}\n{date}"
         
+        logger.info(f"Processing {len(report_data)} files")
         for file_name, section_data in report_data.items():
+            logger.info(f"File: {file_name}")
             if "inactive7" in file_name.lower():
                 self._populate_section(ws, section_data, "inactive7", "Inactive 7 [SPORT] ⚽️")
             elif "inactive14" in file_name.lower():
@@ -173,7 +179,14 @@ class AWOLPlugin(BaseReportPlugin):
         existing_wb = load_workbook(existing_path, data_only=False)
         
         generated_ws = generated_wb.active
-        existing_ws = existing_wb['awol']
+        
+        # Get target sheet based on report type
+        sheet_name = SHEET_MAPPINGS.get('awol', existing_wb.sheetnames[0])
+        if sheet_name in existing_wb.sheetnames:
+            existing_ws = existing_wb[sheet_name]
+        else:
+            existing_ws = existing_wb.active
+            logger.warning(f"Sheet '{sheet_name}' not found, using active sheet")
         
         self._copy_formatting(existing_ws, 'BE', target_col)
         
@@ -193,6 +206,12 @@ class AWOLPlugin(BaseReportPlugin):
                 for offset in range(8):  # 8 metrics per block
                     source_row = source_start + offset
                     target_row = target_start + offset
+                    
+                    # Skip if target cell has a formula
+                    target_cell = existing_ws[f'{target_col}{target_row}']
+                    if isinstance(target_cell.value, str) and target_cell.value.startswith('='):
+                        continue
+                    
                     value = generated_ws[f'{source_col}{source_row}'].value
                     if value is not None:
                         existing_ws[f'{target_col}{target_row}'].value = value
